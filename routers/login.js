@@ -71,7 +71,7 @@ router.get('/abonent/:ls/:family', (req, res) => {
 				let data = {
 					ls: parseInt((result[0].PERACC).toString().trim()),
 					family: f
-				}
+				};
 				res.json(data);
 				db.detach();
 			});
