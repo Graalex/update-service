@@ -1,0 +1,37 @@
+{
+  "name": "update-service",
+  "version": "0.0.1",
+  "description": "Сервис обновления данных для личного кабинета сайта ПАО Мариупольгаз",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Graalex/update-service.git"
+  },
+  "keywords": [
+    "nodejs",
+    "node-firebird",
+    "javascript"
+  ],
+  "author": "Григорчук Александр",
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "bugs": {
+    "url": "https://github.com/Graalex/update-service/issues"
+  },
+  "homepage": "https://github.com/Graalex/update-service#readme",
+  "dependencies": {
+    "cors": "^2.8.1",
+    "express": "^4.15.2",
+    "file-stream-rotator": "^0.1.0",
+    "morgan": "^1.8.1",
+    "node-firebird": "^0.8.1",
+    "promise-mysql": "^3.0.0",
+    "windows-1251": "^1.0.0"
+  }
+}
