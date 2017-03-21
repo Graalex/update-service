@@ -69,8 +69,12 @@ router.get('/abonent/:ls/:family', (req, res) => {
 
 				// проверку прошли, есть результат отправляем его
 				let data = {
-					ls: parseInt((result[0].PERACC).toString().trim()),
-					family: f
+					status: 200,
+					message: 'Успешное выполнение запроса.',
+					content: {
+						ls: parseInt((result[0].PERACC).toString().trim()),
+						family: f
+					}
 				};
 				res.json(data);
 				db.detach();
