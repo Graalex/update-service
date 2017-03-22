@@ -10,6 +10,7 @@ const cors = require('cors');
 
 const conf = require('./config');
 const login = require('./routers/login');
+const acount = require('./routers/acount');
 
 let app = express();
 let logDir = __dirname + '/logs';
@@ -26,6 +27,7 @@ app.use(cors());
 app.use(morgan('combined', {stream: logStream}));
 
 app.use('/login', login);
+app.use('/acount', acount);
 
 let port = conf.server.listenPort || 10000;
 app.listen(port, () => {
