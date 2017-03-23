@@ -22,7 +22,9 @@ router.get('/:ls', (req, res) => {
 	}
 
 	let opt = conf.db.gazolina;
-	let pool = fb.pool(5, opt);
+
+	// создаем пул из 7 подключений к база данных Газолины
+	let pool = fb.pool(7, opt);
 
 	// определяем текущкю дату запроса
 	const date = new Date();
@@ -32,34 +34,46 @@ router.get('/:ls', (req, res) => {
 	};
 
 	try {
-		// создаем пул из 5 подключений к база данных Газолины
-		pool.get((err, db) => {
-			if (err) {
-				throw err;
-			}
 
-			// паралельно получаем всю информацию о лицевом счете
-			Promise.all([
-				gz.getCommonDataAcount(db, ls),
-				gz.getEquipmentsAccount(db, ls),
-				gz.getBenefitsAccount(db, ls),
-				gz.getLastReading(db, ls, dateStr),
-				gz.getPayments(db, ls, 30)
-			])
-			.then(results => {
-					console.dir(results);
-					// объединяем полученные объекты в один
-					results.map(item => {
-						Object.assign(content, item);
-					});
+		Promise.all([
+			gz.getCommonDataAcount(pool, ls),
+			gz.getEquipmentsAccount(pool, ls),
+			gz.getBenefitsAccount(pool, ls),
+			gz.getLastReading(pool, ls, dateStr),
+			gz.getPayments(pool, ls, 12),
+			gz.getReadings(pool, ls, 12),
+			gz.getAllocations(pool, ls, 12)
+		])
+		.then(results => {
+				// объединяем полученные объекты в один
+				results.map(item => {
+					switch (item.kind) {
+						case 'payments':
+							content.payments = item.data;
+							content.last_payment_date = content.payments[0].date;
+							content.last_payment = content.payments[0].amount;
+							break;
 
-					// возвращаем ответ
-					res.json(content);
-			})
-			.catch(err => {
-				// или возвращаем ошибочный результат
-				res.json(err);
-			});
+						case 'readings':
+							content.reaings = item.data;
+							break;
+
+						case 'allocations':
+							content.allocations = item.data;
+							break;
+
+						default:
+							Object.assign(content, item.data);
+							break;
+					}
+				});
+
+				// возвращаем ответ
+				res.json(content);
+		})
+		.catch(err => {
+			// или возвращаем ошибочный результат
+			res.json(err);
 		});
 	}
 

@@ -7,12 +7,11 @@ const fb = require('node-firebird');
 
 /**
  * Получить основную информацию о лицевом счете
- * @param db {Object} объект базы данных  из Газолины
+ * @param pool {Object} пул подключений к базе данных газолина
  * @param ls {number} номер лицевого счета абонента
  * @returns {Promise}
  */
-module.exports.getCommonDataAcount = (db, ls) => {
-	console.log('common stage');
+module.exports.getCommonDataAcount = (pool, ls) => {
 	return new Promise((resolve, reject) => {
 		let query = `
 			select first 1
@@ -47,7 +46,7 @@ module.exports.getCommonDataAcount = (db, ls) => {
 		`;
 		let content = {};
 
-		db.query(query, (err, result) => {
+		pool.get((err, db) => {
 			if (err) {
 				db.detach();
 				reject({
@@ -56,79 +55,91 @@ module.exports.getCommonDataAcount = (db, ls) => {
 				});
 			}
 
-			// если получили пустой результат, то нет такого лицевого счета
-			if (result.length == 0) {
-				db.detach();
-				reject({
-					status: 404,
-					message: 'Неверный лицевой счет.'
-				});
-				return;
-			}
+			db.query(query, (err, result) => {
+				if (err) {
+					db.detach();
+					reject({
+						status: 500,
+						message: err.message
+					});
+				}
 
-			let val = result[0];
+				// если получили пустой результат, то нет такого лицевого счета
+				if (result.length == 0) {
+					db.detach();
+					reject({
+						status: 404,
+						message: 'Неверный лицевой счет.'
+					});
+					return;
+				}
 
-			// начинаем строить ответ
-			// адресная строка
-			let adr = [
-				cp1251.decode(val.CITY_TYPE.toString('binary')).trim(),
-				cp1251.decode(val.CITY.toString('binary')).trim() + ',',
-				cp1251.decode(val.RAYON.toString('binary')).trim(),
-				'р-н,',
-				cp1251.decode(val.STR_TYPE.toString('binary')).trim(),
-				cp1251.decode(val.STREET.toString('binary')).trim() + ',',
-				'д.',
-				val.BUILDNUM
-			]
-				.join(' ');
+				let val = result[0];
 
-			if (val.BUILDLITTER) {
-				adr += cp1251.decode(val.BUILDLITTER.toString('binary')).trim();
-			}
-			if (val.APARTMENTNUM) {
-				adr += ` кв. ${val.APARTMENTNUM}`;
-			}
+				// начинаем строить ответ
+				// адресная строка
+				let adr = [
+					cp1251.decode(val.CITY_TYPE.toString('binary')).trim(),
+					cp1251.decode(val.CITY.toString('binary')).trim() + ',',
+					cp1251.decode(val.RAYON.toString('binary')).trim(),
+					'р-н,',
+					cp1251.decode(val.STR_TYPE.toString('binary')).trim().toLowerCase(),
+					cp1251.decode(val.STREET.toString('binary')).trim() + ',',
+					'д.',
+					val.BUILDNUM
+				]
+					.join(' ');
 
-			// общая информация о счете
-			content.ls = parseInt(val.PERACC.toString().trim());
-			content.eic = val.EIC.toString().trim();
-			content.family = cp1251.decode(val.NAME.toString('binary')).trim();
-			content.name = val.FIRSTNAME !== null ? cp1251.decode(val.FIRSTNAME.toString('binary')).trim() : '';
-			content.patronymic = val.PATRONYMIC !== null ? cp1251.decode(val.PATRONYMIC.toString('binary')).trim() : '';
-			content.address = adr;
-			content.meter = val.COUNTER !== null ? cp1251.decode(val.COUNTER.toString('binary')).trim() : null;
-			content.meter_numb = val.SERIAL !== null ? cp1251.decode(val.SERIAL.toString('binary')).trim() : null;
-			content.group = val.GROUP;
-			content.group_name = val.GROUP_NAME !== null ? cp1251.decode(val.GROUP_NAME.toString('binary')).trim() : null;
-			content.heated_area = val.SQUARE;
-			content.registered_persons = val.PEOPLECNT;
-			content.pw_1 = val.MONTHCOEF1;
-			content.pw_2 = val.MONTHCOEF2;
-			content.pw_3 = val.MONTHCOEF3;
-			content.pw_4 = val.MONTHCOEF4;
-			content.pw_5  = val.MONTHCOEF5;
-			content.pw_6 = val.MONTHCOEF6;
-			content.pw_7 = val.MONTHCOEF7;
-			content.pw_8 = val.MONTHCOEF8;
-			content.pw_9 = val.MONTHCOEF9;
-			content.pw_10 = val.MONTHCOEF10;
-			content.pw_11 = val.MONTHCOEF11;
-			content.pw_12 = val.MONTHCOEF12;
+				if (val.BUILDLITTER) {
+					adr += cp1251.decode(val.BUILDLITTER.toString('binary')).trim();
+				}
+				if (val.APARTMENTNUM) {
+					adr += ` кв. ${val.APARTMENTNUM}`;
+				}
+
+				// общая информация о счете
+				content.ls = parseInt(val.PERACC.toString().trim());
+				content.eic = val.EIC.toString().trim();
+				content.family = cp1251.decode(val.NAME.toString('binary')).trim();
+				content.name = val.FIRSTNAME !== null ? cp1251.decode(val.FIRSTNAME.toString('binary')).trim() : '';
+				content.patronymic = val.PATRONYMIC !== null ? cp1251.decode(val.PATRONYMIC.toString('binary')).trim() : '';
+				content.address = adr;
+				content.meter = val.COUNTER !== null ? cp1251.decode(val.COUNTER.toString('binary')).trim() : null;
+				content.meter_numb = val.SERIAL !== null ? cp1251.decode(val.SERIAL.toString('binary')).trim() : null;
+				content.group = val.GROUP;
+				content.group_name = val.GROUP_NAME !== null ? cp1251.decode(val.GROUP_NAME.toString('binary')).trim() : null;
+				content.heated_area = val.SQUARE;
+				content.registered_persons = val.PEOPLECNT;
+				content.pw_1 = val.MONTHCOEF1;
+				content.pw_2 = val.MONTHCOEF2;
+				content.pw_3 = val.MONTHCOEF3;
+				content.pw_4 = val.MONTHCOEF4;
+				content.pw_5  = val.MONTHCOEF5;
+				content.pw_6 = val.MONTHCOEF6;
+				content.pw_7 = val.MONTHCOEF7;
+				content.pw_8 = val.MONTHCOEF8;
+				content.pw_9 = val.MONTHCOEF9;
+				content.pw_10 = val.MONTHCOEF10;
+				content.pw_11 = val.MONTHCOEF11;
+				content.pw_12 = val.MONTHCOEF12;
+			});
+			db.detach();
+
+			resolve({
+				kind: 'common',
+				data: content
+			});
 		});
-		db.detach();
-
-		resolve(content);
 	});
 }
 
 /**
  * Получить информацию об газопотребляющем оборудовании по лицевому счету
- * @param db {Object} объект базы данных  из Газолины
+ * @param pool {Object} пул подключений к базе данных газолина
  * @param ls {number} номер лицевого счета абонента
  * @returns {Promise}
  */
-module.exports.getEquipmentsAccount = (db, ls) => {
-	console.log('equipment stage');
+module.exports.getEquipmentsAccount = (pool, ls) => {
 	return new Promise((resolve, reject) => {
 		let query = `
 			select a.peracc, et.name as "EQ_TYPE", ek.name as "EQ_NAME"
@@ -141,7 +152,7 @@ module.exports.getEquipmentsAccount = (db, ls) => {
 		`;
 		let equipments = [];
 
-		db.query(query, (err, result) => {
+		pool.get((err, db) =>{
 			if (err) {
 				db.detach();
 				reject({
@@ -150,13 +161,26 @@ module.exports.getEquipmentsAccount = (db, ls) => {
 				});
 			}
 
-			result.map(item => {
-				equipments.push(`${cp1251.decode(item.EQ_TYPE.toString('binary')).trim()} (${cp1251.decode(item.EQ_NAME.toString('binary')).trim()})`);
-			});
-			db.detach();
+			db.query(query, (err, result) => {
+				if (err) {
+					db.detach();
+					reject({
+						status: 500,
+						message: err.message
+					});
+				}
 
-			resolve({
-				equipments: equipments.join('; ')
+				result.map(item => {
+					equipments.push(`${cp1251.decode(item.EQ_TYPE.toString('binary')).trim()} (${cp1251.decode(item.EQ_NAME.toString('binary')).trim()})`);
+				});
+				db.detach();
+
+				resolve({
+					kind: "equipment",
+					data: {
+						equipments: equipments.join('; ')
+					}
+				});
 			});
 		});
 	});
@@ -164,12 +188,11 @@ module.exports.getEquipmentsAccount = (db, ls) => {
 
 /**
  * Получить информацию о льготе для лицевого счетеа
- * @param db {Object} объект базы данных  из Газолины
+ * @param pool {Object} пул подключений к базе данных газолина
  * @param ls {number} номер лицевого счета абонента
  * @returns {Promise}
  */
-module.exports.getBenefitsAccount = (db, ls) => {
-	console.log('benefits stage');
+module.exports.getBenefitsAccount = (pool, ls) => {
 	return new Promise((resolve, reject) => {
 		let query = `
 		select first 1 pt.percentage as "KIND", pp.privpeopcnt as "COUNT"
@@ -181,7 +204,7 @@ module.exports.getBenefitsAccount = (db, ls) => {
 	`;
 		let benefits = {};
 
-		db.query(query, (err, result) => {
+		pool.get((err, db) => {
 			if (err) {
 				db.detach();
 				reject({
@@ -190,27 +213,39 @@ module.exports.getBenefitsAccount = (db, ls) => {
 				});
 			}
 
-			if (result.length > 0) {
-				let val = result[0];
-				benefits.kind_benefits = val.KIND == 0 ? null : val.KIND;
-				benefits.benefits_persons = val.COUNT;
-			}
-			db.detach();
+			db.query(query, (err, result) => {
+				if (err) {
+					db.detach();
+					reject({
+						status: 500,
+						message: err.message
+					});
+				}
 
-			resolve(benefits);
+				if (result.length > 0) {
+					let val = result[0];
+					benefits.kind_benefits = val.KIND == 0 ? null : val.KIND;
+					benefits.benefits_persons = val.COUNT;
+				}
+				db.detach();
+
+				resolve({
+					kind: 'benefits',
+					data: benefits
+				});
+			});
 		});
 	});
 }
 
 /**
  * Получить информацию о последних показаниях газового счетчика
- * @param db {Object} объект базы данных  из Газолины
+ * @param pool {Object} пул подключений к базе данных газолина
  * @param ls {number} номер лицевого счета абонента
  * @param date {String} строка даты в форматк YYYY-MM-DD
  * @returns {Promise}
  */
-module.exports.getLastReading = (db, ls, date) => {
-	console.log('last reading stage');
+module.exports.getLastReading = (pool, ls, date) => {
 	return new Promise((resolve, reject) => {
 		let query = `
 			select c.initvalue + sum(v.vdiffer) as "LAST_TAPE", max(v.checkdate) as "LAST_DATE"
@@ -222,7 +257,7 @@ module.exports.getLastReading = (db, ls, date) => {
 		`;
 		let lastReading = {};
 
-		db.query(query, (err, result) => {
+		pool.get((err, db) => {
 			if (err) {
 				db.detach();
 				reject({
@@ -231,34 +266,47 @@ module.exports.getLastReading = (db, ls, date) => {
 				});
 			}
 
-			lastReading.last_reading_meter = result[0].LAST_TAPE;
-			lastReading.last_reading_date = result[0].LAST_DATE;
-			db.detach();
+			db.query(query, (err, result) => {
+				if (err) {
+					db.detach();
+					reject({
+						status: 500,
+						message: err.message
+					});
+				}
 
-			resolve(lastReading);
+				lastReading.last_reading_meter = result[0].LAST_TAPE;
+				lastReading.last_reading_date = result[0].LAST_DATE;
+				db.detach();
+
+				resolve({
+					kind: 'last-reading',
+					data: lastReading
+				});
+			});
 		});
 	});
 }
 
 /**
  * Получить платежи по лицевому счету в порядке убывания
- * @param db {Object} объект базы данных  из Газолины
+ * @param pool {Object} пул подключений к базе данных газолина
  * @param ls {number} номер лицевого счета абонента
  * @param numb {number} количество платежей
  * @returns {Promise}
  */
-module.exports.getPayments = (db, ls, numb) => {
-	console.log('payments stage');
+module.exports.getPayments = (pool, ls, numb) => {
 	return new Promise((resolve, reject) => {
 		let query = `
 			select first ${numb} p.datic as PAY_DATE, p.sumic as AMOUNT
 			from payment p
 			join abon a on a.kod = p.kodr
 			where a.peracc = ${fb.escape(ls)} and p.ischecked <> 0
+			order by p.datic DESC
 		`;
 		let payments = [];
 
-		db.query(query, (err, result) => {
+		pool.get((err, db) => {
 			if (err) {
 				db.detach();
 				reject({
@@ -267,16 +315,144 @@ module.exports.getPayments = (db, ls, numb) => {
 				});
 			}
 
-			result.map(item => {
-				payments.push({
-					date: item.PAY_DATE,
-					amount: item.AMOUNT
+			db.query(query, (err, result) => {
+				if (err) {
+					db.detach();
+					reject({
+						status: 500,
+						message: err.message
+					});
+				}
+
+				result.map(item => {
+					payments.push({
+						date: item.PAY_DATE,
+						amount: item.AMOUNT
+					});
+				});
+				db.detach();
+
+				resolve({
+					kind: 'payments',
+					data: payments
 				});
 			});
-			console.dir(payments);
-			db.detach();
+		});
+	});
+}
 
-			resolve(payments);
+/**
+ * Получить показания сяетчика по лицевому счету в порядке убывания
+ * @param pool {Object} пул подключений к базе данных газолина
+ * @param ls {number} номер лицевого счета абонента
+ * @param numb {number} количество платежей
+ * @returns {Promise}
+ */
+module.exports.getReadings = (pool, ls, numb) => {
+	return new Promise((resolve, reject) => {
+		let query = `
+			select first ${numb} 
+				v.checkdate as "DATE", c.initvalue + sum(v.vdiffer) as "TAPE"
+			from valuic v
+			join abon a on a.kod = v.kodr
+			join counter c on c.counterkey = v.counterr
+			where  a.peracc=${fb.escape(ls)} and v.ischecked <> 0
+			group by v.checkdate, c.initvalue
+			order by v.checkdate desc
+		`;
+		let readings = [];
+
+		pool.get((err, db) => {
+			if (err) {
+				reject({
+					status: 500,
+					message: err.message
+				});
+			}
+
+			db.query(query, (err, result) => {
+				if (err) {
+					db.detach();
+					reject({
+						status: 500,
+						message: err.message
+					});
+				}
+
+				result.map(item => {
+					readings.push({
+						date: item.DATE,
+						tape: item.TAPE
+					});
+					db.detach();
+
+					resolve({
+						kind: 'readings',
+						data: readings
+					});
+				});
+			});
+		});
+	});
+}
+
+/**
+ * Получить показания сяетчика по лицевому счету в порядке убывания
+ * @param pool {Object} пул подключений к базе данных газолина
+ * @param ls {number} номер лицевого счета абонента
+ * @param numb {number} количество платежей
+ * @returns {Promise}
+ */
+module.exports.getAllocations = (pool, ls, numb) => {
+	return new Promise((resolve, reject) => {
+		// вычисляем интервалы
+		let curDate = new Date();
+		let endDate = new Date(curDate.getFullYear(), curDate.getMonth(), 0);
+		let beginDate = new Date(curDate.getFullYear(), curDate.getMonth() - numb - 1, 1);
+		console.log(curDate.getMonth());
+		console.log(endDate);
+
+		let query = `
+			select c.begindate as BEGIN_DATE, c.enddate as END_DATE, c.calcdate as "DATE", c.v as "VOLUME"
+			from calc c
+			join abon a on a.kod = c.kodr
+			where c.begindate >= ${fb.escape(beginDate)} and c.enddate <= ${fb.escape(endDate)} and a.peracc = ${fb.escape(ls)}
+			order by c.calcdate desc
+		`;
+		let allocations = [];
+
+		pool.get((err, db) => {
+			if (err) {
+				reject({
+					status: 500,
+					message: err.message
+				});
+			}
+
+			db.query(query, (err, result) => {
+				if (err) {
+					db.detach();
+					reject({
+						status: 500,
+						message: err.message
+					});
+				}
+
+				result.map(item => {
+					allocations.push({
+						beginDate: item.BEGIN_DATE,
+						endDate: item.END_DATE,
+						date: item.DATE,
+						volume: item.VOLUME
+					});
+				});
+				db.detach();
+
+				resolve({
+					kind: 'allocations',
+					data: allocations
+				});
+			});
 		});
 	});
 }
