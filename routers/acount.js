@@ -68,8 +68,13 @@ router.get('/:ls', (req, res) => {
 					}
 				});
 
-				// возвращаем ответ
-				res.json(content);
+			// возвращаем ответ
+			let data = {
+				status: 200,
+				message: 'Успешное выполнение запроса.',
+				content: content
+			};
+			res.json(data);
 		})
 		.catch(err => {
 			// или возвращаем ошибочный результат
