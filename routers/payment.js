@@ -1,5 +1,5 @@
 /**
- * meter.js -- получить информацию о показаниях газового счетчика
+ * payment.js -- получить информацию о платежах
  */
 
 const exp = require('express');
@@ -30,7 +30,7 @@ router.get('/:ls/:count', (req, res) => {
 	let pool = fb.pool(2, opt);
 
 	try {
-		Promise.all([gz.getReadings(pool, ls, count)])
+		Promise.all([gz.getPayments(pool, ls, count)])
 			.then(results => {
 				res.json({
 					status: 200,

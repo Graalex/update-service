@@ -1,5 +1,5 @@
 /**
- * Created by Sergey on 27.03.2017.
+ * allocation.js -- получить информацию о распределении природного газа
  */
 
 const exp = require('express');
