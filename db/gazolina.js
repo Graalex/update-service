@@ -409,8 +409,8 @@ module.exports.getAllocations = (pool, ls, numb) => {
 		let curDate = new Date();
 		let endDate = new Date(curDate.getFullYear(), curDate.getMonth(), 0);
 		let beginDate = new Date(curDate.getFullYear(), curDate.getMonth() - numb - 1, 1);
-		console.log(curDate.getMonth());
-		console.log(endDate);
+		// console.log(curDate.getMonth());
+		// console.log(endDate);
 
 		let query = `
 			select c.begindate as BEGIN_DATE, c.enddate as END_DATE, c.calcdate as "DATE", c.v as "VOLUME"

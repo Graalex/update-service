@@ -30,7 +30,7 @@ router.get('/:ls/:count', (req, res) => {
 	let pool = fb.pool(2, opt);
 
 	try {
-		Promise.all([gz.getReadings(pool, ls, count)])
+		Promise.all([gz.getAllocations(pool, ls, count)])
 			.then(results => {
 				res.json({
 					status: 200,
@@ -59,3 +59,4 @@ router.get('/:ls/:count', (req, res) => {
 });
 
 module.exports = router;
+
