@@ -17,10 +17,6 @@
   ],
   "author": "Григорчук Александр",
   "license": "MIT",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
   "bugs": {
     "url": "https://github.com/Graalex/update-service/issues"
   },

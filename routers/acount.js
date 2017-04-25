@@ -28,9 +28,8 @@ router.get('/:ls', (req, res) => {
 
 	// определяем текущкю дату запроса
 	const date = new Date();
-	const dateStr = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 	let content = {
-		date_state: dateStr
+		date_state: date
 	};
 
 	try {
@@ -39,9 +38,9 @@ router.get('/:ls', (req, res) => {
 			gz.getCommonDataAcount(pool, ls),
 			gz.getEquipmentsAccount(pool, ls),
 			gz.getBenefitsAccount(pool, ls),
-			gz.getLastReading(pool, ls, dateStr),
+			// gz.getLastReading(pool, ls, dateStr),
 			gz.getPayments(pool, ls, 12),
-			gz.getReadings(pool, ls, 12),
+			// gz.getReadings(pool, ls, 12),
 			gz.getAllocations(pool, ls, 12)
 		])
 		.then(results => {

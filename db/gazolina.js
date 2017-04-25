@@ -1,5 +1,5 @@
 /**
- * gazolina.js -- модулб для извлечения данных с таблиц Газодины.
+ * gazolina.js -- модуль для извлечения данных с таблиц Газодины.
  */
 
 const cp1251 = require('windows-1251');
@@ -131,7 +131,7 @@ module.exports.getCommonDataAcount = (pool, ls) => {
 			});
 		});
 	});
-}
+};
 
 /**
  * Получить информацию об газопотребляющем оборудовании по лицевому счету
@@ -184,7 +184,7 @@ module.exports.getEquipmentsAccount = (pool, ls) => {
 			});
 		});
 	});
-}
+};
 
 /**
  * Получить информацию о льготе для лицевого счетеа
@@ -236,7 +236,7 @@ module.exports.getBenefitsAccount = (pool, ls) => {
 			});
 		});
 	});
-}
+};
 
 /**
  * Получить информацию о последних показаниях газового счетчика
@@ -275,8 +275,10 @@ module.exports.getLastReading = (pool, ls, date) => {
 					});
 				}
 
-				lastReading.last_reading_meter = result[0].LAST_TAPE;
-				lastReading.last_reading_date = result[0].LAST_DATE;
+				if (result && result.length > 0) {
+					lastReading.last_reading_meter = result[0].LAST_TAPE;
+					lastReading.last_reading_date = result[0].LAST_DATE;
+				}
 				db.detach();
 
 				resolve({
@@ -286,7 +288,7 @@ module.exports.getLastReading = (pool, ls, date) => {
 			});
 		});
 	});
-}
+};
 
 /**
  * Получить платежи по лицевому счету в порядке убывания
@@ -297,12 +299,17 @@ module.exports.getLastReading = (pool, ls, date) => {
  */
 module.exports.getPayments = (pool, ls, numb) => {
 	return new Promise((resolve, reject) => {
+		// вычисляем интервалы
+		let curDate = new Date();
+		let beginDate = new Date(curDate.getFullYear(), curDate.getMonth() - numb + 1);
+
 		let query = `
-			select first ${numb} p.datic as PAY_DATE, p.sumic as AMOUNT
+			select p.realdate as PAY_DATE, p.sumic as AMOUNT, b.name as BANK
 			from payment p
 			join abon a on a.kod = p.kodr
-			where a.peracc = ${fb.escape(ls)} and p.ischecked <> 0
-			order by p.datic DESC
+			left join bank b on b.bankkey = p.bankr
+			where a.peracc = ${fb.escape(ls)}  and p.ischecked = 1 and p.realdate >= ${fb.escape(beginDate)}
+			order by p.realdate desc
 		`;
 		let payments = [];
 
@@ -327,7 +334,8 @@ module.exports.getPayments = (pool, ls, numb) => {
 				result.map(item => {
 					payments.push({
 						date: item.PAY_DATE,
-						amount: item.AMOUNT
+						amount: item.AMOUNT,
+						bank: cp1251.decode(item.BANK.toString('binary')).trim()
 					});
 				});
 				db.detach();
@@ -339,7 +347,7 @@ module.exports.getPayments = (pool, ls, numb) => {
 			});
 		});
 	});
-}
+};
 
 /**
  * Получить показания сяетчика по лицевому счету в порядке убывания
@@ -352,12 +360,12 @@ module.exports.getReadings = (pool, ls, numb) => {
 	return new Promise((resolve, reject) => {
 		let query = `
 			select first ${numb} 
-				v.checkdate as "DATE", c.initvalue + sum(v.vdiffer) as "TAPE"
+				a.peracc, v.checkdate as "DATE", c.initvalue + sum(v.vdiffer) as "TAPE"
 			from valuic v
 			join abon a on a.kod = v.kodr
 			join counter c on c.counterkey = v.counterr
 			where  a.peracc=${fb.escape(ls)} and v.ischecked <> 0
-			group by v.checkdate, c.initvalue
+			group by a.peracc, v.checkdate, c.initvalue
 			order by v.checkdate desc
 		`;
 		let readings = [];
@@ -394,10 +402,10 @@ module.exports.getReadings = (pool, ls, numb) => {
 			});
 		});
 	});
-}
+};
 
 /**
- * Получить показания сяетчика по лицевому счету в порядке убывания
+ * Получить распределение газа по лицевому счету в порядке убывания
  * @param pool {Object} пул подключений к базе данных газолина
  * @param ls {number} номер лицевого счета абонента
  * @param numb {number} количество платежей
@@ -407,16 +415,15 @@ module.exports.getAllocations = (pool, ls, numb) => {
 	return new Promise((resolve, reject) => {
 		// вычисляем интервалы
 		let curDate = new Date();
-		let endDate = new Date(curDate.getFullYear(), curDate.getMonth(), 0);
-		let beginDate = new Date(curDate.getFullYear(), curDate.getMonth() - numb - 1, 1);
-		// console.log(curDate.getMonth());
-		// console.log(endDate);
+		let beginDate = new Date(curDate.getFullYear(), curDate.getMonth() - numb + 1);
 
 		let query = `
-			select c.begindate as BEGIN_DATE, c.enddate as END_DATE, c.calcdate as "DATE", c.v as "VOLUME"
+			select c.calcdate as CALC_DATE, sum(c.v) as VOLUME, c.price as PRICE, max(c.heatvalue) as AVG_HEART,
+    		sum(c.energykvt) as KWTH_VOLUME, sum(c.energymj) as MGD_VOLUME, sum(c.energygcal) as GKAL_VOLUME
 			from calc c
 			join abon a on a.kod = c.kodr
-			where c.begindate >= ${fb.escape(beginDate)} and c.enddate <= ${fb.escape(endDate)} and a.peracc = ${fb.escape(ls)}
+			where a.peracc = ${fb.escape(ls)} and c.calcdate >= ${fb.escape(beginDate)}
+			group by c.calcdate, c.price
 			order by c.calcdate desc
 		`;
 		let allocations = [];
@@ -438,14 +445,19 @@ module.exports.getAllocations = (pool, ls, numb) => {
 					});
 				}
 
-				result.map(item => {
-					allocations.push({
-						beginDate: item.BEGIN_DATE,
-						endDate: item.END_DATE,
-						date: item.DATE,
-						volume: item.VOLUME
+				if (result) {
+					result.map(item => {
+						allocations.push({
+							date: item.CALC_DATE,
+							volume: item.VOLUME,
+							price: item.PRICE,
+							avgHeart: item.AVG_HEART != 0 ? item.AVG_HEART : null,
+							kwthVolume: item.KWTH_VOLUME != 0 ? item.KWTH_VOLUME : null,
+							mgdVolume: item.MGD_VOLUME != 0 ? item.MGD_VOLUME : null,
+							gkalVolume: item.GKAL_VOLUME != 0 ? item.GKAL_VOLUME : null
+						});
 					});
-				});
+				}
 				db.detach();
 
 				resolve({
@@ -455,4 +467,4 @@ module.exports.getAllocations = (pool, ls, numb) => {
 			});
 		});
 	});
-}
+};
