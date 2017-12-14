@@ -1,6 +1,6 @@
 {
   "name": "update-service",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Сервис обновления данных для личного кабинета сайта ПАО Мариупольгаз",
   "main": "index.js",
   "scripts": {
