@@ -330,8 +330,8 @@ module.exports.getPayments = (pool, ls, numb) => {
 	return new Promise((resolve, reject) => {
 		// вычисляем интервалы
 		let curDate = new Date();
-		let beginDate = new Date(curDate.getFullYear(), curDate.getMonth() - numb + 1);
-
+		let beginDate = new Date(curDate.getFullYear(), curDate.getMonth() - numb);
+		
 		let query = `
 			select p.realdate as PAY_DATE, p.sumic as AMOUNT, b.name as BANK
 			from payment p
@@ -340,26 +340,33 @@ module.exports.getPayments = (pool, ls, numb) => {
 			where a.peracc = ${fb.escape(ls)}  and p.ischecked = 1 and p.realdate >= ${fb.escape(beginDate)}
 			order by p.realdate desc
 		`;
-		let payments = [];
-
+		
 		pool.get((err, db) => {
 			if (err) {
-				db.detach();
-				reject({
+				return reject({
 					status: 500,
-					message: err.message
+					message: 'Внутренняя ошибка сервера.',
+					data: {
+						code: err.code,
+						op: err.syscall
+					}
 				});
 			}
 
 			db.query(query, (err, result) => {
 				if (err) {
 					db.detach();
-					reject({
+					return reject({
 						status: 500,
-						message: err.message
+						message: 'Внутренняя ошибка сервера.',
+						data: {
+							code: err.code,
+							op: err.syscall
+						}
 					});
 				}
-
+				
+				let payments = [];
 				result.map(item => {
 					payments.push({
 						date: item.PAY_DATE,
@@ -369,10 +376,7 @@ module.exports.getPayments = (pool, ls, numb) => {
 				});
 				db.detach();
 
-				resolve({
-					kind: 'payments',
-					data: payments
-				});
+				return resolve(payments);
 			});
 		});
 	});
