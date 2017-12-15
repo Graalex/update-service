@@ -10,7 +10,7 @@ const cors = require('cors');
 
 const conf = require('./config');
 const login = require('./routers/login');
-const acount = require('./routers/acount');
+const account = require('./routers/account');
 const meter = require('./routers/meter');
 const allocation = require('./routers/allocation');
 const payment = require('./routers/payment');
@@ -30,7 +30,7 @@ app.use(cors());
 app.use(morgan('combined', {stream: logStream}));
 
 app.use('/login', login);
-app.use('/acount', acount);
+app.use('/accounts', account);
 app.use('/meter', meter);
 app.use('/allocation', allocation);
 app.use('/payment', payment);

@@ -5,9 +5,9 @@
 module.exports = {
 	db: {
 		gazolina: {
-			host: '192.168.0.69',
+			host: '192.168.0.211',
 			port: 3050,
-			database: 'E:/data/mariupol.fdb',
+			database: 'E:/DATA/MARIUPOL.FDB',
 			user: 'SYSDBA',
 			password: 'masterkey',
 			lowercase_keys: false,

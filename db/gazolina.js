@@ -45,33 +45,40 @@ module.exports.getCommonDataAcount = (pool, ls) => {
 			where a.peracc = ${fb.escape(ls)}
 		`;
 		let content = {};
-
 		pool.get((err, db) => {
 			if (err) {
-				db.detach();
-				reject({
+				return reject({
 					status: 500,
-					message: err.message
+					message: 'Внутренняя ошибка сервера.',
+					data: {
+						code: err.code,
+						op: err.syscall
+					}
 				});
 			}
 
 			db.query(query, (err, result) => {
 				if (err) {
 					db.detach();
-					reject({
+					return reject({
 						status: 500,
-						message: err.message
+						message: 'Внутренняя ошибка сервера.',
+						data: {
+							code: err.code,
+							op: err.syscall
+						}
 					});
 				}
 
 				// если получили пустой результат, то нет такого лицевого счета
 				if (result.length == 0) {
 					db.detach();
-					reject({
+					return reject({
 						status: 404,
-						message: 'Неверный лицевой счет.'
+						data: {
+							message: 'Неверный лицевой счет.'
+						}
 					});
-					return;
 				}
 
 				let val = result[0];
@@ -122,12 +129,13 @@ module.exports.getCommonDataAcount = (pool, ls) => {
 				content.pw_10 = val.MONTHCOEF10;
 				content.pw_11 = val.MONTHCOEF11;
 				content.pw_12 = val.MONTHCOEF12;
-			});
-			db.detach();
-
-			resolve({
-				kind: 'common',
-				data: content
+				
+				db.detach();
+				
+				return resolve({
+					kind: 'common',
+					data: content
+				});
 			});
 		});
 	});
@@ -154,19 +162,26 @@ module.exports.getEquipmentsAccount = (pool, ls) => {
 
 		pool.get((err, db) =>{
 			if (err) {
-				db.detach();
-				reject({
+				return reject({
 					status: 500,
-					message: err.message
+					message: 'Внутренняя ошибка сервера.',
+					data: {
+						code: err.code,
+						op: err.syscall
+					}
 				});
 			}
 
 			db.query(query, (err, result) => {
 				if (err) {
 					db.detach();
-					reject({
+					return reject({
 						status: 500,
-						message: err.message
+						message: 'Внутренняя ошибка сервера.',
+						data: {
+							code: err.code,
+							op: err.syscall
+						}
 					});
 				}
 
@@ -175,7 +190,7 @@ module.exports.getEquipmentsAccount = (pool, ls) => {
 				});
 				db.detach();
 
-				resolve({
+				return resolve({
 					kind: "equipment",
 					data: {
 						equipments: equipments.join('; ')
@@ -206,19 +221,26 @@ module.exports.getBenefitsAccount = (pool, ls) => {
 
 		pool.get((err, db) => {
 			if (err) {
-				db.detach();
-				reject({
+				return reject({
 					status: 500,
-					message: err.message
+					message: 'Внутренняя ошибка сервера.',
+					data: {
+						code: err.code,
+						op: err.syscall
+					}
 				});
 			}
 
 			db.query(query, (err, result) => {
 				if (err) {
 					db.detach();
-					reject({
+					return reject({
 						status: 500,
-						message: err.message
+						message: 'Внутренняя ошибка сервера.',
+						data: {
+							code: err.code,
+							op: err.syscall
+						}
 					});
 				}
 
@@ -229,7 +251,7 @@ module.exports.getBenefitsAccount = (pool, ls) => {
 				}
 				db.detach();
 
-				resolve({
+				return resolve({
 					kind: 'benefits',
 					data: benefits
 				});
@@ -259,19 +281,26 @@ module.exports.getLastReading = (pool, ls, date) => {
 
 		pool.get((err, db) => {
 			if (err) {
-				db.detach();
-				reject({
+				return reject({
 					status: 500,
-					message: err.message
+					message: 'Внутренняя ошибка сервера.',
+					data: {
+						code: err.code,
+						op: err.syscall
+					}
 				});
 			}
 
 			db.query(query, (err, result) => {
 				if (err) {
 					db.detach();
-					reject({
+					return reject({
 						status: 500,
-						message: err.message
+						message: 'Внутренняя ошибка сервера.',
+						data: {
+							code: err.code,
+							op: err.syscall
+						}
 					});
 				}
 
@@ -281,7 +310,7 @@ module.exports.getLastReading = (pool, ls, date) => {
 				}
 				db.detach();
 
-				resolve({
+				return resolve({
 					kind: 'last-reading',
 					data: lastReading
 				});
