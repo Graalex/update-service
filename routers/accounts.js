@@ -23,64 +23,31 @@ router.get('/:ls', (req, res) => {
 
 	let opt = conf.db.gazolina;
 
-	// создаем пул из 7 подключений к база данных Газолины
-	let pool = fb.pool(7, opt);
-
-	// определяем текущкю дату запроса
-	const date = new Date();
-	let content = {
-		date_state: date
-	};
+	// создаем пул из 3 подключений к база данных Газолины
+	let pool = fb.pool(3, opt);
 	
-	const dateStr = date.toISOString().substr(0, 9);
-
 	try {
-
 		Promise.all([
 			gz.getCommonDataAcount(pool, ls),
 			gz.getEquipmentsAccount(pool, ls),
 			gz.getBenefitsAccount(pool, ls),
-			gz.getLastReading(pool, ls, dateStr),
-			//gz.getPayments(pool, ls, 12),
-			// gz.getReadings(pool, ls, 12),
-			//gz.getAllocations(pool, ls, 12)
 		])
 		.then(results => {
-				// объединяем полученные объекты в один
-				results.map(item => {
-					switch (item.kind) {
-						case 'payments':
-							content.payments = item.data;
-							content.last_payment_date = content.payments[0].date;
-							content.last_payment = content.payments[0].amount;
-							break;
-
-						case 'readings':
-							content.reaings = item.data;
-							break;
-
-						case 'allocations':
-							content.allocations = item.data;
-							break;
-
-						default:
-							Object.assign(content, item.data);
-							break;
-					}
-				});
+			let content = {
+				date_state: new Date(),
+			};
+			// объединяем полученные объекты в один
+			results.map(item => Object.assign(content, item));
 
 			// возвращаем ответ
-			let data = {
+			return res.json({
 				status: 200,
 				message: 'Успешное выполнение запроса.',
 				data: content
-			};
-			res.json(data);
+			});
 		})
-		.catch(err => {
-			// или возвращаем ошибочный результат
-			res.json(err);
-		});
+		// или возвращаем ошибочный результат
+		.catch(err => res.json(err));
 	}
 
 	catch (err) {

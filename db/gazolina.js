@@ -44,7 +44,6 @@ module.exports.getCommonDataAcount = (pool, ls) => {
 			left join inhabitedlocalitytype i on i.inhabitedlocalitytypekey = c.inhabitedlocalitytyper
 			where a.peracc = ${fb.escape(ls)}
 		`;
-		let content = {};
 		pool.get((err, db) => {
 			if (err) {
 				return reject({
@@ -86,25 +85,19 @@ module.exports.getCommonDataAcount = (pool, ls) => {
 				// начинаем строить ответ
 				// адресная строка
 				let adr = [
-					cp1251.decode(val.CITY_TYPE.toString('binary')).trim(),
+					val.CITY_TYPE !== null ? cp1251.decode(val.CITY_TYPE.toString('binary')).trim() : '',
 					cp1251.decode(val.CITY.toString('binary')).trim() + ',',
 					cp1251.decode(val.RAYON.toString('binary')).trim(),
 					'р-н,',
-					cp1251.decode(val.STR_TYPE.toString('binary')).trim().toLowerCase(),
+					val.STR_TYPE !== null ? cp1251.decode(val.STR_TYPE.toString('binary')).trim().toLowerCase() : '',
 					cp1251.decode(val.STREET.toString('binary')).trim() + ',',
 					'д.',
-					val.BUILDNUM
-				]
-					.join(' ');
-
-				if (val.BUILDLITTER) {
-					adr += cp1251.decode(val.BUILDLITTER.toString('binary')).trim();
-				}
-				if (val.APARTMENTNUM) {
-					adr += ` кв. ${val.APARTMENTNUM}`;
-				}
-
-				// общая информация о счете
+					val.BUILDNUM,
+					val.BUILDLITTER !== null ? cp1251.decode(val.BUILDLITTER.toString('binary')).trim() : '',
+					val.APARTMENTNUM !== null ? ` кв. ${val.APARTMENTNUM}` : ''
+				].join(' ');
+				
+				let content = {};
 				content.ls = parseInt(val.PERACC.toString().trim());
 				content.eic = val.EIC.toString().trim();
 				content.family = cp1251.decode(val.NAME.toString('binary')).trim();
@@ -132,10 +125,7 @@ module.exports.getCommonDataAcount = (pool, ls) => {
 				
 				db.detach();
 				
-				return resolve({
-					kind: 'common',
-					data: content
-				});
+				return resolve(content);
 			});
 		});
 	});
@@ -158,8 +148,7 @@ module.exports.getEquipmentsAccount = (pool, ls) => {
 			join abon a on a.kod = c.kodr
 			where c.datic = (select first 1 max(datic) from change where kodr = c.kodr) and a.peracc = ${fb.escape(ls)}
 		`;
-		let equipments = [];
-
+		
 		pool.get((err, db) =>{
 			if (err) {
 				return reject({
@@ -184,18 +173,14 @@ module.exports.getEquipmentsAccount = (pool, ls) => {
 						}
 					});
 				}
-
+				
+				let equipments = [];
 				result.map(item => {
 					equipments.push(`${cp1251.decode(item.EQ_TYPE.toString('binary')).trim()} (${cp1251.decode(item.EQ_NAME.toString('binary')).trim()})`);
 				});
 				db.detach();
 
-				return resolve({
-					kind: "equipment",
-					data: {
-						equipments: equipments.join('; ')
-					}
-				});
+				return resolve({equipments: equipments.join('; ')});
 			});
 		});
 	});
@@ -217,7 +202,6 @@ module.exports.getBenefitsAccount = (pool, ls) => {
 		left join abon a on a.kod = pn.kodr
 		where a.peracc = ${fb.escape(ls)}
 	`;
-		let benefits = {};
 
 		pool.get((err, db) => {
 			if (err) {
@@ -243,7 +227,8 @@ module.exports.getBenefitsAccount = (pool, ls) => {
 						}
 					});
 				}
-
+				
+				let benefits = {};
 				if (result.length > 0) {
 					let val = result[0];
 					benefits.kind_benefits = val.KIND == 0 ? null : val.KIND;
@@ -251,10 +236,7 @@ module.exports.getBenefitsAccount = (pool, ls) => {
 				}
 				db.detach();
 
-				return resolve({
-					kind: 'benefits',
-					data: benefits
-				});
+				return resolve(benefits);
 			});
 		});
 	});
